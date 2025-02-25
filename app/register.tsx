@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Text, View, TextInput, Pressable, StyleSheet, Image, Alert } from 'react-native';
 import { Link, useRouter } from 'expo-router';
-import logo from '@/assets/images/logo.png'
+const logo = require('@/assets/images/logo.png')
 
 export default function Page() {
     const router = useRouter();
