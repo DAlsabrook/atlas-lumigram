@@ -6,7 +6,7 @@ import { useColorScheme } from "react-native";
 export default function Logout() {
     const router = useRouter();
     const colorScheme = useColorScheme();
-    const iconColor = colorScheme === 'dark' ? 'white' : 'black';
+    const iconColor = '#1DD2AF';
 
     function logout() {
         router.replace("/login");
