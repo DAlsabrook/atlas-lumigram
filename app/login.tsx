@@ -1,12 +1,28 @@
 import React, { useState } from 'react';
 import { Text, View, TextInput, Pressable, StyleSheet, Image } from 'react-native';
 import { Link, useRouter } from 'expo-router';
-const logo = require('@/assets/images/logo.png')
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../firebaseConfig';
+import { useAuth } from '../context/AuthContext';
 
-export default function Page() {
+const logo = require('@/assets/images/logo.png');
+
+export default function LoginPage() {
     const router = useRouter();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
+    const { user } = useAuth();
+
+    const handleLogin = async () => {
+        try {
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            if (userCredential.user) router.replace("/(tabs)");
+        } catch (error) {
+            setError('Failed to sign in.');
+            console.error('Login failed', error);
+        }
+    };
 
     return (
         <View style={styles.container}>
@@ -15,6 +31,7 @@ export default function Page() {
                 style={styles.image}
             />
             <Text style={styles.title}>Login</Text>
+            {error ? <Text style={styles.errorText}>{error}</Text> : null}
             <TextInput
                 style={styles.input}
                 placeholder="Email"
@@ -35,9 +52,7 @@ export default function Page() {
             />
             <Pressable
                 style={styles.button}
-                onPress={() => {
-                    router.replace("/(tabs)");
-                }}
+                onPress={handleLogin}
             >
                 <Text style={styles.buttonText}>Sign In</Text>
             </Pressable>
@@ -65,6 +80,10 @@ const styles = StyleSheet.create({
         fontSize: 24,
         marginBottom: 24,
         color: "white"
+    },
+    errorText: {
+        color: 'red',
+        marginBottom: 16,
     },
     input: {
         width: '100%',

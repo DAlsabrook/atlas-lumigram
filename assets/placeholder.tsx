@@ -7,3 +7,5 @@ const placeholderData = [
 ];
 
 export default placeholderData;
+
+// images from https://betterplaceholder.com/
