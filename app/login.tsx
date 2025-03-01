@@ -12,7 +12,6 @@ export default function LoginPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
-    const { user } = useAuth();
 
     const handleLogin = async () => {
         try {
@@ -20,7 +19,6 @@ export default function LoginPage() {
             if (userCredential.user) router.replace("/(tabs)");
         } catch (error) {
             setError('Failed to sign in.');
-            console.error('Login failed', error);
         }
     };
 

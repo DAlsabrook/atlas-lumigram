@@ -1,12 +1,28 @@
 import React, { useState } from 'react';
 import { Text, View, TextInput, Pressable, StyleSheet, Image, Alert } from 'react-native';
 import { Link, useRouter } from 'expo-router';
-const logo = require('@/assets/images/logo.png')
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../firebaseConfig';
 
-export default function Page() {
+const logo = require('@/assets/images/logo.png');
+
+export default function RegisterPage() {
     const router = useRouter();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
+
+    const handleRegister = async () => {
+        try {
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            if (userCredential.user) {
+                Alert.alert('Account Created', 'Your account has been created successfully.');
+                router.replace("/(tabs)");
+            }
+        } catch (error) {
+            setError('Failed to create account. Please try again.');
+        }
+    };
 
     return (
         <View style={styles.container}>
@@ -15,6 +31,7 @@ export default function Page() {
                 style={styles.image}
             />
             <Text style={styles.title}>Register</Text>
+            {error ? <Text style={styles.errorText}>{error}</Text> : null}
             <TextInput
                 style={styles.input}
                 placeholder="Email"
@@ -35,10 +52,7 @@ export default function Page() {
             />
             <Pressable
                 style={styles.button}
-                onPress={() => {
-                    Alert.alert('Account Created')
-                    router.replace("/(tabs)");
-                }}
+                onPress={handleRegister}
             >
                 <Text style={styles.buttonText}>Create Account</Text>
             </Pressable>
@@ -66,6 +80,10 @@ const styles = StyleSheet.create({
         fontSize: 24,
         marginBottom: 24,
         color: "white"
+    },
+    errorText: {
+        color: 'red',
+        marginBottom: 16,
     },
     input: {
         width: '100%',
