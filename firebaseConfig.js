@@ -1,21 +1,22 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-// import { getFirestore } from 'firebase/firestore';
-// import { getStorage } from 'firebase/storage';
+import { getAuth, initializeAuth, getReactNativePersistence } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyBpoNRzjvExwaEzFvRIQ8_kVvOYFUOAtKM',
   authDomain: 'lumigram-d7718.web.app',
   projectId: 'lumigram-d7718',
-  storageBucket: 'YOUR_STORAGE_BUCKET',
-  messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
-  appId: 'YOUR_APP_ID',
+  storageBucket: 'gs://lumigram-d7718.firebasestorage.app',
 };
 
 const app = initializeApp(firebaseConfig);
 
-const auth = getAuth(app);
-// const firestore = getFirestore(app);
-// const storage = getStorage(app);
+const auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(AsyncStorage)
+});
+const firestore = getFirestore(app);
+const storage = getStorage(app);
 
-export { auth };
+export { auth, storage, firestore };
