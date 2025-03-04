@@ -1,23 +1,68 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, Alert, Image } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, Text, Alert, Image, RefreshControl, ActivityIndicator } from 'react-native';
 import { FlashList, FlashListProps } from '@shopify/flash-list';
 import { GestureHandlerRootView, LongPressGestureHandler, TapGestureHandler, State } from 'react-native-gesture-handler';
 import { ThemedView } from '@/components/ThemedView';
-import placeholderData from '@/assets/placeholder';
+import { collection, query, orderBy, limit, getDocs, startAfter, QueryDocumentSnapshot } from 'firebase/firestore';
+import { firestore } from '@/firebaseConfig';
+import { useAuth } from '@/context/AuthContext';
 
-interface PlaceholderItem {
+type FavoriteItem = {
   id: string;
-  url: string;
+  imageUrl: string;
   caption: string;
+  createdAt: any;
 }
 
-export default function Page() {
+export default function FavoritesPage() {
+  const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastVisible, setLastVisible] = useState<QueryDocumentSnapshot | null>(null);
   const [bubbleVisible, setBubbleVisible] = useState(false);
   const [bubblePosition, setBubblePosition] = useState({ x: 0, y: 0 });
   const [bubbleCaption, setBubbleCaption] = useState('');
+  const { user } = useAuth();
+
+  const fetchFavorites = async (refresh = false) => {
+    if (!user) return;
+    if (refresh) {
+      setLastVisible(null);
+    }
+    setLoading(true);
+    try {
+      const favoritesQuery = query(
+        collection(firestore, `users/${user.uid}/favorites`),
+        orderBy('createdAt', 'desc'),
+        limit(10),
+        ...(lastVisible ? [startAfter(lastVisible)] : [])
+      );
+      const querySnapshot = await getDocs(favoritesQuery);
+      const newFavorites = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as FavoriteItem[];
+      setFavorites(refresh ? newFavorites : [...favorites, ...newFavorites]);
+      setLastVisible(querySnapshot.docs.length > 0 ? querySnapshot.docs[querySnapshot.docs.length - 1] : null);
+    } catch (error) {
+      console.error('Error fetching favorites:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchFavorites(true);
+  }, [user]);
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchFavorites(true);
+  };
 
   const handleDoubleTap = () => {
-    Alert.alert('Double Tap', 'You liked the image!');
+    Alert.alert('Double Tap', 'You have already liked the image!');
     setBubbleVisible(false);
   };
 
@@ -27,7 +72,7 @@ export default function Page() {
     setBubbleVisible(true);
   };
 
-  const renderItem: FlashListProps<PlaceholderItem>['renderItem'] = ({ item }: { item: PlaceholderItem }) => (
+  const renderItem: FlashListProps<FavoriteItem>['renderItem'] = ({ item }: { item: FavoriteItem }) => (
     <GestureHandlerRootView>
       <LongPressGestureHandler
         onHandlerStateChange={({ nativeEvent }) => {
@@ -47,7 +92,7 @@ export default function Page() {
           onActivated={() => setBubbleVisible(false)}
         >
           <View style={styles.imageContainer}>
-            <Image source={{ uri: item.url }} style={styles.image} />
+            <Image source={{ uri: item.imageUrl }} style={styles.image} />
           </View>
         </TapGestureHandler>
       </LongPressGestureHandler>
@@ -56,17 +101,26 @@ export default function Page() {
 
   return (
     <ThemedView style={styles.container}>
-      <FlashList<PlaceholderItem>
-      data={placeholderData}
-      renderItem={renderItem}
-      keyExtractor={(item: PlaceholderItem) => item.id}
-      estimatedItemSize={200}
-      onScroll={() => setBubbleVisible(false)}
-      />
+      {loading && favorites.length === 0 ? (
+        <ActivityIndicator size="large" color="#0000ff" />
+      ) : (
+        <FlashList<FavoriteItem>
+          data={favorites}
+          renderItem={renderItem}
+          keyExtractor={(item: FavoriteItem) => item.id}
+          estimatedItemSize={200}
+          onEndReached={() => fetchFavorites()}
+          onEndReachedThreshold={0.5}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          }
+          onScroll={() => setBubbleVisible(false)}
+        />
+      )}
       {bubbleVisible && (
-      <View style={[styles.bubble, { top: bubblePosition.y, left: bubblePosition.x }]}>
-        <Text style={styles.bubbleText}>{bubbleCaption}</Text>
-      </View>
+        <View style={[styles.bubble, { top: bubblePosition.y, left: bubblePosition.x }]}>
+          <Text style={styles.bubbleText}>{bubbleCaption}</Text>
+        </View>
       )}
     </ThemedView>
   );
@@ -107,4 +161,3 @@ const styles = StyleSheet.create({
     color: 'white',
   },
 });
-

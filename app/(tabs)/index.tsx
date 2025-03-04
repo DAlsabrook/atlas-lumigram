@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { StyleSheet, View, Text, Alert, Image, RefreshControl } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, Text, Alert, Image, RefreshControl, ActivityIndicator } from 'react-native';
 import { FlashList, FlashListProps } from '@shopify/flash-list';
 import { GestureHandlerRootView, LongPressGestureHandler, TapGestureHandler, State } from 'react-native-gesture-handler';
 import { ThemedView } from '@/components/ThemedView';
-import { collection, query, orderBy, limit, getDocs, startAfter, QueryDocumentSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, limit, getDocs, startAfter, QueryDocumentSnapshot, doc, setDoc } from 'firebase/firestore';
 import { firestore } from '@/firebaseConfig';
+import { useAuth } from '@/context/AuthContext';
 
 type Post = {
   id: string;
@@ -21,15 +22,19 @@ export default function HomeScreen() {
   const [bubbleVisible, setBubbleVisible] = useState(false);
   const [bubblePosition, setBubblePosition] = useState({ x: 0, y: 0 });
   const [bubbleCaption, setBubbleCaption] = useState('');
+  const { user } = useAuth();
 
   const fetchPosts = async (refresh = false) => {
+    if (refresh) {
+      setLastVisible(null);
+    }
     setLoading(true);
     try {
       const postsQuery = query(
         collection(firestore, 'posts'),
         orderBy('createdAt', 'desc'),
         limit(10),
-        ...(refresh ? [] : [startAfter(lastVisible)])
+        ...(lastVisible ? [startAfter(lastVisible)] : [])
       );
       const querySnapshot = await getDocs(postsQuery);
       const newPosts = querySnapshot.docs.map(doc => ({
@@ -55,8 +60,17 @@ export default function HomeScreen() {
     fetchPosts(true);
   };
 
-  const handleDoubleTap = () => {
-    Alert.alert('Double Tap', 'You liked the image!');
+  const handleDoubleTap = async (post: Post) => {
+    if (!user) return;
+
+    try {
+      const favoriteRef = doc(firestore, `users/${user.uid}/favorites/${post.id}`);
+      await setDoc(favoriteRef, post);
+      Alert.alert('Added to Favorites', 'You have added this post to your favorites.');
+    } catch (error) {
+      console.error('Error adding to favorites:', error);
+      Alert.alert('Failed to add to favorites.');
+    }
     setBubbleVisible(false);
   };
 
@@ -80,7 +94,7 @@ export default function HomeScreen() {
           numberOfTaps={2}
           onHandlerStateChange={({ nativeEvent }) => {
             if (nativeEvent.state === State.ACTIVE) {
-              handleDoubleTap();
+              handleDoubleTap(item);
             }
           }}
           onActivated={() => setBubbleVisible(false)}
@@ -92,9 +106,9 @@ export default function HomeScreen() {
       </LongPressGestureHandler>
     </GestureHandlerRootView>
   );
-
   return (
     <ThemedView style={styles.container}>
+      {loading && <ActivityIndicator size="large" color="#0000ff" />}
       <FlashList<Post>
         data={posts}
         renderItem={renderItem}
